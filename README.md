@@ -6,3 +6,5 @@ https://www.quora.com/Can-you-explain-the-difference-between-Canny-edge-detectio
 https://www.youtube.com/watch?v=VIKOCINWBNw
 
 https://docs.streamlit.io/library/api-reference/widgets/st.file_uploader
+
+https://towardsdatascience.com/canny-edge-detection-step-by-step-in-python-computer-vision-b49c3a2d8123
