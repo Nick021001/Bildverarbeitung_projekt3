@@ -12,3 +12,5 @@ https://towardsdatascience.com/canny-edge-detection-step-by-step-in-python-compu
 https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.convolve.html
 
 https://www.youtube.com/watch?v=nqL266Ijq64
+
+https://www.youtube.com/watch?v=nqL266Ijq64
