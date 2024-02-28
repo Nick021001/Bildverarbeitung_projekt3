@@ -2,59 +2,51 @@ import numpy as np
 import skimage as ski
 from scipy.ndimage import convolve
 from ImageFilter import *
+from scipy import signal
 
-def edge_thining(image, angle):
-    M, N = image.shape
+def edge_thining(img, angle):
+    M, N = img.shape
     Z = np.zeros((M, N))
     angle = angle * 180. / np.pi
     angle[angle < 0] += 180
 
-    for i in range(1, M-1):
-        for j in range(1, N-1):
-            q = 255
-            r = 255
+    for i in range(1, M - 1):
+        for j in range(1, N - 1):
+            try:
+                q = 255
+                r = 255
 
-            if (angle[i, j] == 0) or (angle[i,j] == 180):
-                q = image[i, j+1]
-                r = image[i, j-1]
+                # angle 0
+                if (0 <= angle[i, j] < 22.5) or (157.5 <= angle[i, j] <= 180):
+                    q = img[i, j + 1]
+                    r = img[i, j - 1]
+                # angle 45
+                elif (22.5 <= angle[i, j] < 67.5):
+                    q = img[i + 1, j - 1]
+                    r = img[i - 1, j + 1]
+                # angle 90
+                elif (67.5 <= angle[i, j] < 112.5):
+                    q = img[i + 1, j]
+                    r = img[i - 1, j]
+                # angle 135
+                elif (112.5 <= angle[i, j] < 157.5):
+                    q = img[i - 1, j - 1]
+                    r = img[i + 1, j + 1]
 
-            elif (angle[i, j] == 45):
-                q = image[i+1, j-1]
-                r = image[i-1, j+1]
+                if (img[i, j] >= q) and (img[i, j] >= r):
+                    Z[i, j] = img[i, j]
+                else:
+                    Z[i, j] = 0
 
-            elif (angle[i, j] == 90):
-                q = image[i + 1, j]
-                r = image[i - 1, j]
+            except IndexError as e:
+                pass
 
-            elif (angle[i, j] == 135):
-                q = image[i-1, j-1]
-                r = image[i+1, j+1]
-
-            #interpolation cases
-            elif (angle[i, j] > 0 and angle[i, j] < 45):
-                q = int((image[i, j+1] + image[i+1, j-1]) / 2)
-                r = int((image[i, j-1] + image[i-1, j+1])/2)
-
-            elif (angle[i, j] > 45 and angle[i, j] < 90):
-                q = int((image[i+1, j-1] + image[i + 1, j]) / 2)
-                r = int((image[i-1, j+1] + image[i - 1, j]) / 2)
-
-            elif (angle[i, j] > 90 and angle[i, j] < 135):
-                q = int((image[i + 1, j] + image[i-1, j-1]) / 2)
-                r = int((image[i - 1, j] + image[i+1, j+1]) / 2)
-
-            elif (angle[i, j] > 135 and angle[i, j] < 180):
-                q = int((image[i-1, j-1] + image[i, j+1]) / 2)
-                r = int((image[i+1, j+1] + image[i, j-1]) / 2)
-
-            if (image[i, j] >= q) and (image[i, j] >= r):
-                Z[i, j] = image[i, j]
-            else:
-                Z[i, j] = 0
     return Z
 
 def sobelFilter(image):
-    image = ski.color.rgb2gray(image)
+    if (len(image) == 3):
+        image = ski.color.rgb2gray(image)
+
     sobelfilterXDirection = np.array([[1, 0, -1], [2, 0, -2], [1, 0, -1]])
     sobelfilterYDirection = np.array([[1, 2, 1], [0, 0, 0], [-1, -2, -1]])
 
@@ -63,40 +55,48 @@ def sobelFilter(image):
 
     image = np.hypot(Gx, Gy)
     image = image / image.max() * 255
-    theta = np.arctan2(Gy,Gx)
+    theta = np.arctan2(Gy, Gx)
 
     return image, theta
 
+def scharrFilter(image):
+    if (len(image) == 3):
+        image = ski.color.rgb2gray(image)
+        
+    sobelfilterXDirection = np.array([[47, 0, -47], [162, 0, -162], [47, 0, -47]])
+    sobelfilterYDirection = np.array([[47, 162, 47], [0, 0, 0], [-47, -162, -47]])
 
-def threshold(img, lowThresholdRatio=0.1, highThresholdRatio=0.2):
-    highThreshold = img.max() * highThresholdRatio;
-    lowThreshold = highThreshold * lowThresholdRatio;
+    Gx = convolve(image, sobelfilterXDirection)
+    Gy = convolve(image, sobelfilterYDirection)
+
+    image = np.hypot(Gx, Gy)
+    image = image / image.max() * 255
+    theta = np.arctan2(Gy, Gx)
+
+    return image, theta
+
+def threshold(img, low_threshold=0.1, high_threshold=0.2):
+    low_threshold = 5
+    high_threshold = 25
 
     M, N = img.shape
-    res = np.zeros((M, N), dtype=np.int32)
 
     weak = np.int32(25)
     strong = np.int32(255)
 
-    strong_i, strong_j = np.where(img >= highThreshold)
-    zeros_i, zeros_j = np.where(img < lowThreshold)
+    strong_i, strong_j = np.where(img >= high_threshold)
+    zeros_i, zeros_j = np.where(img < low_threshold)
 
-    weak_i, weak_j = np.where((img <= highThreshold) & (img >= lowThreshold))
+    weak_i, weak_j = np.where((img <= high_threshold) & (img >= low_threshold))
 
-    res[strong_i, strong_j] = strong
-    res[weak_i, weak_j] = weak
+    img[strong_i, strong_j] = strong
+    img[weak_i, weak_j] = weak
 
-    return (res, weak, strong)
-
-def hysteresis(img, weak, strong=255):
-    M, N = img.shape
-    for i in range(1, M-1):
-        for j in range(1, N-1):
-            if (img[i,j] == weak):
+    for i in range(1, M - 1):
+        for j in range(1, N - 1):
+           if (img[i, j] == weak):
                 try:
-                    if ((img[i+1, j-1] == strong) or (img[i+1, j] == strong) or (img[i+1, j+1] == strong)
-                        or (img[i, j-1] == strong) or (img[i, j+1] == strong)
-                        or (img[i-1, j-1] == strong) or (img[i-1, j] == strong) or (img[i-1, j+1] == strong)):
+                    if np.any(img[i-1:i+1, j-1:j+1] == strong):
                         img[i, j] = strong
                     else:
                         img[i, j] = 0
@@ -104,17 +104,80 @@ def hysteresis(img, weak, strong=255):
                     pass
     return img
 
-def cannyFilter(image, k0):
+def cannyFilter(image, k0, filter="sobel"):
     image = apply_filter(image, k0, "hgtp")
-    image, angle = sobelFilter(image)
+    if (filter == "scharr"):
+        image, angle = scharrFilter(image)
+    elif (filter == "sobel"):
+        image, angle = sobelFilter(image)
+    else:
+        raise ValueError("filter is not avaiable")
+
     image = edge_thining(image, angle)
 
-    image, weak, strong = threshold(image)
-
-    print(weak, strong)
-    #image = hysteresis(image, weak)
+    #image = threshold(image)
 
     return image
+
+def detect_line_segments(input_image, edge_pixels, vote_threshold, segment_length_criteria):
+    output_segments = []
+
+    while edge_pixels:
+        best_pixel = find_best_distinguished_pixel(edge_pixels)  # Function to find the best-distinguished pixel
+
+        paired_pixel = None
+        theta = calculate_line_parameters(best_pixel, paired_pixel)  # Function to calculate line parameters
+        votes = calculate_votes(theta, edge_pixels)  # Function to calculate votes using voting kernel
+
+        max_vote_index = np.argmax(votes)
+        max_vote = votes[max_vote_index]
+
+        if max_vote < vote_threshold:
+            continue
+
+        if meets_criteria(theta, segment_length_criteria):  # Function to check if parameters meet criteria
+            output_segments.append(theta)
+
+        # Remove pixels on the primitive from input image
+        edge_pixels = remove_pixels(edge_pixels, theta)  # Function to remove pixels on the primitive
+
+    return output_segments
+
+# Define functions used in the algorithm
+def find_best_distinguished_pixel(img, edge_pixels):
+    best_distinguished_pixel_x = []
+    best_distinguished_pixel_y = []
+    for i in range(len(edge_pixels[0])):
+        count = 0
+        for k in range(edge_pixels[0][i] - 1, edge_pixels[0][i] + 1):
+            for l in range(edge_pixels[1][i] - 1, edge_pixels[1][i] + 1):
+                if (img[k, l] == 255): #and (k == edge_pixels[0][i] and l == edge_pixels[1][i]) == False):
+                        count += 1
+        if (count == 1):
+            best_distinguished_pixel_x.append(edge_pixels[0][i])
+            best_distinguished_pixel_y.append(edge_pixels[1][i])
+
+    return np.array([best_distinguished_pixel_x, best_distinguished_pixel_y])
+
+def find_another_edge_pixel(edge_pixels):
+    # Implementation specific to your needs
+    pass
+
+def calculate_line_parameters(pixel1, pixel2):
+    # Implementation specific to your needs
+    pass
+
+def calculate_votes(theta, edge_pixels):
+    # Implementation specific to your needs
+    pass
+
+def meets_criteria(theta, segment_length_criteria):
+    # Implementation specific to your needs
+    pass
+
+def remove_pixels(edge_pixels, theta):
+    # Implementation specific to your needs
+    pass
 
 def createBoundingBox(self, filter="canny"):
     return None
