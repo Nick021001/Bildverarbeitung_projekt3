@@ -16,3 +16,5 @@ https://www.youtube.com/watch?v=nqL266Ijq64
 https://www.youtube.com/watch?v=nqL266Ijq64
 
 https://ieeexplore.ieee.org/abstract/document/958983?casa_token=l0cp2-9in6MAAAAA:pWNlL-nQhFZQXevEMUm_BSBwGQDLDBb2BSEGRCT9sLkBRPtOspVUE7pVWxsveJ7Ys-mcRGe7winrCA
+
+https://towardsdatascience.com/hog-histogram-of-oriented-gradients-67ecd887675f
